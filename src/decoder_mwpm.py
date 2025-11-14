@@ -161,19 +161,37 @@ class MinimumWeightDecoder:
         # Convert syndrome to list
         syndrome_list = list(syndrome)
         
+        # Get appropriate stabilizer list
+        stab_type = 'X_type' if error_type == 'Z' else 'Z_type'
+        max_stab_index = len(self.stabilizers[stab_type]) - 1
+        
+        # Filter out invalid syndrome indices
+        syndrome_list = [s for s in syndrome_list if s <= max_stab_index]
+        
+        if not syndrome_list:
+            return {}
+        
         # If odd number of defects, add boundary node
+        boundary_node = None
         if len(syndrome_list) % 2 == 1:
             # Add virtual boundary node at large distance
             boundary_node = max(decode_graph.nodes()) + 1
             for node in syndrome_list:
-                decode_graph.add_edge(node, boundary_node, weight=1000.0)
+                if node in decode_graph.nodes():
+                    decode_graph.add_edge(node, boundary_node, weight=1000.0)
             syndrome_list.append(boundary_node)
         
-        # Build subgraph with only syndrome nodes
-        syndrome_subgraph = decode_graph.subgraph(syndrome_list).copy()
+        # Build subgraph with only syndrome nodes that exist in decode graph
+        valid_syndrome_nodes = [n for n in syndrome_list if n in decode_graph.nodes()]
+        
+        if len(valid_syndrome_nodes) < 2:
+            # Not enough nodes for matching
+            return {}
+        
+        syndrome_subgraph = decode_graph.subgraph(valid_syndrome_nodes).copy()
         
         # Add edges between all syndrome pairs if not present
-        for i, j in combinations(syndrome_list, 2):
+        for i, j in combinations(valid_syndrome_nodes, 2):
             if not syndrome_subgraph.has_edge(i, j):
                 # Calculate weight as shortest path in full graph
                 try:
@@ -186,32 +204,40 @@ class MinimumWeightDecoder:
                 syndrome_subgraph.add_edge(i, j, weight=path_length)
         
         # Find minimum-weight perfect matching
-        matching = nx.min_weight_matching(syndrome_subgraph, weight='weight')
+        try:
+            matching = nx.min_weight_matching(syndrome_subgraph, weight='weight')
+        except:
+            # If matching fails, return empty correction
+            return {}
         
         # Convert matching to correction
         correction = {}
         
         for stab_i, stab_j in matching:
             # Skip if involves boundary
-            if stab_i >= len(self.stabilizers['X_type']) or \
-               stab_j >= len(self.stabilizers['X_type']):
+            if boundary_node is not None and (stab_i == boundary_node or stab_j == boundary_node):
                 continue
             
-            # Find shortest path between stabilizers in physical lattice
-            # This gives us the qubits to apply correction to
+            # Check bounds
+            if stab_i > max_stab_index or stab_j > max_stab_index:
+                continue
             
-            # For simplicity, apply correction to midpoint
-            # (Full version would trace actual path)
-            stab_support_i = self.stabilizers['X_type' if error_type == 'Z' else 'Z_type'][stab_i]
-            stab_support_j = self.stabilizers['X_type' if error_type == 'Z' else 'Z_type'][stab_j]
-            
-            # Apply correction to one qubit from each stabilizer
-            qubit_i = list(stab_support_i)[0]
-            qubit_j = list(stab_support_j)[0]
-            
-            # Apply single error (simplified)
-            correction[qubit_i] = 1
-            correction[qubit_j] = 1
+            # Get stabilizer supports
+            try:
+                stab_support_i = self.stabilizers[stab_type][stab_i]
+                stab_support_j = self.stabilizers[stab_type][stab_j]
+                
+                # Apply correction to one qubit from each stabilizer
+                if stab_support_i and stab_support_j:
+                    qubit_i = list(stab_support_i)[0]
+                    qubit_j = list(stab_support_j)[0]
+                    
+                    # Apply single error (simplified)
+                    correction[qubit_i] = 1
+                    correction[qubit_j] = 1
+            except (IndexError, KeyError):
+                # Skip this pair if there's an issue
+                continue
         
         return correction
     

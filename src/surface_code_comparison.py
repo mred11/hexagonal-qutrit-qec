@@ -13,6 +13,13 @@ import networkx as nx
 from typing import Dict, List, Tuple, Set
 import matplotlib.pyplot as plt
 
+# Import HexagonalQutritCode for comparison functions
+try:
+    from hexagonal_qutrit_code import HexagonalQutritCode
+except ImportError:
+    # If running as part of package
+    from .hexagonal_qutrit_code import HexagonalQutritCode
+
 
 class SurfaceCode:
     """
