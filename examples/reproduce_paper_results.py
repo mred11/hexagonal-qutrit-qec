@@ -34,6 +34,21 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 
+def get_results_path():
+    """
+    Get the path to results directory, creating it if needed.
+    Works whether run from examples/ or repo root.
+    """
+    # Try to find repo root
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(current_dir)  # Go up from examples/
+    
+    results_dir = os.path.join(repo_root, 'results', 'figures')
+    os.makedirs(results_dir, exist_ok=True)
+    
+    return results_dir
+
+
 def test_1_basic_threshold(distance=5, n_trials=500):
     """
     Test 1: Find basic error threshold.
@@ -55,10 +70,10 @@ def test_1_basic_threshold(distance=5, n_trials=500):
     print(f"\n✓ Estimated threshold: {threshold:.4f} ({threshold*100:.2f}%)")
     
     # Save results
-    os.makedirs('../results/figures', exist_ok=True)
+    results_dir = get_results_path()
     plot_threshold_curve(
         results, distance,
-        save_path='../results/figures/fig1_threshold.png'
+        save_path=os.path.join(results_dir, 'fig1_threshold.png')
     )
     
     return threshold, results
@@ -92,6 +107,36 @@ def test_2_biased_noise(distance=5, n_trials=500):
     improvement = (thresholds[100] - thresholds[1]) / thresholds[1] * 100
     print(f"\n✓ Improvement at 100:1 bias: +{improvement:.1f}%")
     
+    # Generate Figure 3: Biased noise plot
+    results_dir = get_results_path()
+    
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    biases = list(thresholds.keys())
+    thresh_values = [thresholds[b] * 100 for b in biases]
+    
+    ax.plot(biases, thresh_values, 'o-', linewidth=2.5, markersize=10, 
+           color='blue', label='Hexagonal Qutrit')
+    
+    # Approximate surface code for comparison
+    surf_thresholds = [1.0 * np.sqrt(b) for b in biases]
+    surf_thresholds = [min(t, 3.0) for t in surf_thresholds]
+    ax.plot(biases, surf_thresholds, 's-', linewidth=2.5, markersize=10,
+           color='red', label='Surface Code (approximate)')
+    
+    ax.set_xlabel('Z-Bias Ratio (Z:X)', fontsize=13)
+    ax.set_ylabel('Error Threshold (%)', fontsize=13)
+    ax.set_title('Performance Under Biased Noise', fontsize=15, fontweight='bold')
+    ax.set_xscale('log')
+    ax.legend(fontsize=12)
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'fig3_biased_noise.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print("\n✓ Figure saved: fig3_biased_noise.png")
+    
     return thresholds
 
 
@@ -107,6 +152,7 @@ def test_3_distance_scaling(distances=[3, 5, 7], n_trials=500):
     
     error_rates = [0.003, 0.005, 0.008, 0.01, 0.015]
     all_results = {}
+    all_data = {}
     
     for d in distances:
         print(f"\nTesting d={d}...")
@@ -116,10 +162,46 @@ def test_3_distance_scaling(distances=[3, 5, 7], n_trials=500):
         
         threshold, results = sim.find_threshold(error_rates, n_trials)
         all_results[d] = threshold
+        all_data[d] = results
         
         print(f"  Threshold: {threshold*100:.2f}%")
     
     print("\n✓ Scaling validated across distances")
+    
+    # Generate Figure 4: Distance scaling plot
+    results_dir = get_results_path()
+    
+    fig, ax = plt.subplots(figsize=(10, 7))
+    
+    colors = ['blue', 'green', 'red']
+    
+    for i, d in enumerate(distances):
+        results = all_data[d]
+        p_phys = [r['physical_error_rate'] for r in results]
+        p_log = [r['logical_error_rate'] for r in results]
+        
+        ax.plot(p_phys, p_log, 'o-', linewidth=2.5, markersize=8,
+               label=f'd={d}', color=colors[i])
+    
+    # Threshold line
+    max_p = 0.02
+    ax.plot([0, max_p], [0, max_p], '--', color='black',
+           label='Threshold', linewidth=1.5, alpha=0.7)
+    
+    ax.set_xlabel('Physical Error Rate', fontsize=13)
+    ax.set_ylabel('Logical Error Rate', fontsize=13)
+    ax.set_title('Scaling with Code Distance', fontsize=15, fontweight='bold')
+    ax.legend(fontsize=12)
+    ax.grid(True, alpha=0.3)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'fig4_distance_scaling.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print("\n✓ Figure saved: fig4_distance_scaling.png")
+    
     return all_results
 
 
@@ -151,10 +233,10 @@ def test_4_surface_code_comparison(distance=5):
     print(f"✓ Surface code: {surf_threshold*100:.2f}%")
     
     # Resource comparison
-    os.makedirs('../results/figures', exist_ok=True)
+    results_dir = get_results_path()
     fig, savings = compare_resource_efficiency(
         [3, 5, 7],
-        save_path='../results/figures/fig2_resources.png'
+        save_path=os.path.join(results_dir, 'fig2_resources.png')
     )
     
     print(f"\n✓ Resource savings at d={distance}: {savings[1]:.1f}%")
@@ -179,6 +261,8 @@ def generate_summary():
     print("\nGenerated Files:")
     print("  • results/figures/fig1_threshold.png")
     print("  • results/figures/fig2_resources.png")
+    print("  • results/figures/fig3_biased_noise.png")
+    print("  • results/figures/fig4_distance_scaling.png")
     
     print("\n" + "="*70)
 

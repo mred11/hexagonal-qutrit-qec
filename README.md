@@ -17,6 +17,34 @@ This repository contains the complete implementation and simulation code for hex
 - **Biased Noise Performance:** +40% improvement under 100:1 Z-bias
 - **Scaling:** Validated across distances d=3, 5, 7
 
+## Results
+
+All results are fully reproducible using the provided code. Run `python examples/reproduce_paper_results.py` to regenerate all figures.
+
+### Figure 1: Error Threshold Performance
+
+![Threshold Curve](results/figures/fig1_threshold.png)
+
+*Error threshold of ~1.0% at code distance d=5, matching surface code performance with 95% confidence intervals.*
+
+### Figure 2: Resource Efficiency Comparison
+
+![Resource Comparison](results/figures/fig2_resources.png)
+
+*Physical resource requirements vs code distance. Hexagonal qutrit codes achieve ~20% resource savings compared to surface codes at d=5.*
+
+### Figure 3: Biased Noise Performance
+
+![Biased Noise](results/figures/fig3_biased_noise.png)
+
+*Performance under biased noise models. Shows +40% threshold improvement at 100:1 Z-bias ratio, relevant for realistic hardware implementations.*
+
+### Figure 4: Distance Scaling Validation
+
+![Distance Scaling](results/figures/fig4_distance_scaling.png)
+
+*Logical error rate vs physical error rate for multiple code distances (d=3, 5, 7). Demonstrates consistent scaling behavior across distance values.*
+
 ## Overview
 
 Hexagonal qutrit codes achieve error correction performance comparable to surface codes while requiring significantly fewer physical resources. By encoding quantum information in three-level systems (qutrits) arranged on a hexagonal lattice, these codes leverage:
@@ -230,4 +258,14 @@ This research utilized Claude AI (Anthropic) for computational assistance and co
 
 ---
 
-**Status:** Active Development | **Version:** 1.0.0 | **Last Updated:** November 2025
+**Status:** Active Development | **Version:** 1.0.3 | **Last Updated:** November 2025
+
+## Future Extensions
+
+This repository is actively maintained and includes an `extensions/` directory for additional research:
+- Lattice geometry comparisons (triangular, square, kagome)
+- Alternative decoder implementations
+- Extended noise models
+- Hardware-specific optimizations
+
+Check the `extensions/` folder for ongoing work beyond the main paper.
